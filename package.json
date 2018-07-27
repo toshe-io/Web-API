@@ -1,0 +1,10 @@
+{
+    "name": "TOSHE WEB API",
+    "version": "0.0.1",
+    "description": "Web API for the toshe.io frontend",
+    "dependencies": {
+        "express": "^4.16.3",
+        "mysql": "^2.16.0",
+        "socket.io": "^2.1.1"
+    }
+}
