@@ -4,6 +4,7 @@ var io = require('socket.io')(http);
 var mysql = require('mysql');
 
 var port = process.env.PORT || 3000;
+var historyCount = 100;
 
 var con = mysql.createConnection({
   host: "localhost",
@@ -22,43 +23,37 @@ var getTimestamp = function() {
 }
 
 var message = function(user, text) {
-    return {"user": user, "text": text, "time": 222222};
+    return {"user": user, "text": text, "time": getTimestamp()};
 }
 
 // TODO: Filter msg, SQL Injection
 io.on('connection', function(socket){
     
     socket.on('chat', function(msg){
-        io.emit('chat', msg);
+        msg["time"] = getTimestamp();
 
-        var query = "INSERT INTO chat (user, text, time) VALUES ('" + msg["user"] + "', '" + msg["text"] + "', " + getTimestamp() + ");"
+        var query = con.query('INSERT INTO chat SET ?', msg, function (error, results, fields) {
+            if (error) throw error;
 
-        con.query(query, function (err, result) {
-            if (err) throw err;
-            console.log(result);
+            io.emit('chat', msg);
         });
-        //INSERT INTO chat (user, message, time) VALUES ('Cardinal', 'Tom', 2222);
     });
 
     socket.on('joined', function (user) {
         // Send joined message
-        io.emit('joined', message(user, "Joined the chat", getTimestamp()));
+        io.emit('joined', message(user, "Joined the chat"));
 
-        // Send chat history to users
-        con.query("SELECT * FROM chat", function (err, result) {
+        // Send chat history to user
+        con.query("SELECT * FROM chat ORDER BY time DESC LIMIT " + historyCount, function (err, result) {
             if (err) throw err;
-            for(var i = 0;i < result.length;i++) {
-                socket.emit('chat', result[i]);
-            }
-            console.log(result.length);
+
+            socket.emit('history', result);
         });
-        console.log('connect');
     });
 
     socket.on('disconnect', function () {
         // Send left message to others
-        io.emit('left', message("SOMEONE", "Left the chat", getTimestamp()));
-        console.log('disconnect');
+        io.emit('left', message("SOMEONE", "Left the chat"));
     });
 });
 
