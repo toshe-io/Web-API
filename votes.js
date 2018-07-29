@@ -39,14 +39,30 @@ io.on('connection', function(socket){
 
     socket.on('joined', function (user) {
         // Send chat history to user
-        con.query("SELECT * FROM votes ORDER BY time DESC LIMIT " + historyCount, function (err, result) {
-            if (err) throw err;
-            
-            socket.emit('history', result);
+        con.query("SELECT * FROM votes ORDER BY time DESC LIMIT " + historyCount, function (error, results) {
+            if (error) throw error;
+
+            socket.emit('history', results);
         });
     });
 
-    socket.on('disconnect', function () {
+    socket.on('like', function (like) {
+        voteID = like["id"];
+
+        con.query("SELECT * FROM votes WHERE id = ?", [voteID], function (error, results, fields) {
+            if (error) throw error;
+
+            if (results.length > 0 && typeof results[0]!= 'undefined') {
+                var vote = results[0];
+                vote["likes"]++;
+
+                con.query('UPDATE votes SET likes = ? WHERE id = ?', [vote["likes"], vote["id"]], function (error, results, fields) {
+                    if (error) throw error;
+                    
+                    io.emit('update_vote', vote);
+                });
+            }
+        });
     });
 });
 
